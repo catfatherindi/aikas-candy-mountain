@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aikas Candy Mountain</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fff1f6">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Candy Mountain">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Outfit:wght@400;500;600&display=swap">
 <style>
 /* Layout: eine Bildschirmseite. Berg mittig, Zähler darunter, unten links "Füllen", unten rechts "Leeren". */
@@ -1129,7 +1136,7 @@ dialog::backdrop { background: rgba(40, 10, 30, 0.6); }
   }
 
   /* Update-Prüfung */
-  var APP_VERSION = '1.1.0';
+  var APP_VERSION = '1.2.0';
   var PAGES_ORIGIN = 'https://catfatherindi.github.io';
   var PAGES_URL = PAGES_ORIGIN + '/aikas-candy-mountain/';
   var btnUpdate = $('btnUpdate'), upd = $('upd'), updText = $('updText');
@@ -1312,6 +1319,10 @@ dialog::backdrop { background: rgba(40, 10, 30, 0.6); }
       busy = false;
     });
   });
+
+  try {
+    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () {});
+  } catch (e) {}
 
   loadMirror();
   render();
