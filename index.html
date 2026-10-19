@@ -722,6 +722,11 @@ dialog::backdrop { background: rgba(40, 10, 30, 0.6); }
     var muzzle = tux
       ? '<ellipse cx="30" cy="-32" rx="7.5" ry="6" fill="#ffffff"/><polygon points="24,-48 20.5,-40 27.5,-40" fill="#ffffff"/>'
       : '';
+    var marks = tux
+      ? '<polygon points="-21.5,-30.0 -22.0,-29.0 -21.0,-28.4 -17.9,-26.9 -14.1,-25.9 -11.6,-25.7 -9.6,-26.1 -8.3,-26.9 -7.7,-28.3 -7.8,-29.4 -8.3,-30.8 -9.1,-32.1 -10.3,-33.4 -16.3,-32.1 -19.2,-31.1" fill="#ffffff"/>'
+        + '<polygon points="-1.8,-34.0 -3.0,-33.0 -2.6,-31.3 -1.8,-29.9 -0.3,-28.3 1.6,-27.3 4.3,-26.9 6.3,-27.3 7.9,-28.3 9.0,-30.0 9.1,-31.5 8.7,-32.9 1.5,-33.9" fill="#ffffff"/>'
+        + '<polygon points="-12.0,-23.0 -11.0,-21.3 -9.8,-20.1 -7.4,-19.0 -5.9,-19.0 -4.6,-19.3 -3.6,-20.0 -3.0,-21.0 -3.2,-22.4 -3.9,-23.5 -4.9,-24.3 -6.2,-24.7 -8.2,-24.7 -9.9,-24.2" fill="#ffffff"/>'
+      : '<polygon points="24.8,-15.9 20.5,-17.1 15.3,-17.6 10.2,-17.1 5.3,-15.7 2.0,-14.0 1.8,-13.5 1.0,-11.4 0.7,-9.9 0.8,-7.9 1.2,-6.5 1.5,-6.1 7.5,-6.8 11.5,-7.7 15.8,-9.2 19.0,-10.7 21.6,-12.5 24.3,-15.3" fill="#ffffff"/>';
     var eye = function (cx) {
       return '<circle cx="' + cx + '" cy="-38" r="2.8" fill="#ffd24a"/><ellipse cx="' + cx + '" cy="-38" rx="0.8" ry="2.1" fill="#111111"/>';
     };
@@ -735,6 +740,7 @@ dialog::backdrop { background: rgba(40, 10, 30, 0.6); }
       + paws
       + '<ellipse class="a fur" cx="-2" cy="-20" rx="28" ry="14"/>'
       + chest
+      + marks
       + '<g class="arm" transform="rotate(0 16 -24)"><path class="arm-out" d="M16 -24 L28 -14"/><path class="arm-in" d="M16 -24 L28 -14"/><circle class="a ' + (tux ? 'white-fur' : 'fur') + '" cx="28" cy="-14" r="5"/></g>'
       + '<g class="head">'
       + '<circle class="a fur" cx="24" cy="-36" r="13"/>'
@@ -1123,7 +1129,7 @@ dialog::backdrop { background: rgba(40, 10, 30, 0.6); }
   }
 
   /* Update-Prüfung */
-  var APP_VERSION = '1.0.0';
+  var APP_VERSION = '1.1.0';
   var PAGES_ORIGIN = 'https://catfatherindi.github.io';
   var PAGES_URL = PAGES_ORIGIN + '/aikas-candy-mountain/';
   var btnUpdate = $('btnUpdate'), upd = $('upd'), updText = $('updText');
