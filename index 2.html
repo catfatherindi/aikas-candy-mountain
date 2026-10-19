@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aikas Candy Mountain</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Outfit:wght@400;500;600&display=swap">
+<style>
+/* Layout: eine Bildschirmseite. Berg mittig, Zähler darunter, unten links "Füllen", unten rechts "Leeren". */
+:root {
+  --bg: #fff1f6;
+  --panel: #ffffff;
+  --ink: #3a0f2c;
+  --muted: #7a4a68;
+  --pink: #ff3d86;
+  --pink-soft: #ffb3d1;
+  --mint: #1fcfa3;
+  --mint-ink: #052e24;
+  --sun: #ffc21a;
+  --empty: #ffe2ee;
+  --display: 'Lilita One', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --body: 'Outfit', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1e0b19; --panel: #2f1329; --ink: #ffe8f2; --muted: #c79ab4;
+    --pink: #ff5c9a; --pink-soft: #8a2a58; --mint: #2de0b3; --mint-ink: #052e24;
+    --sun: #ffd24a; --empty: #2b1026; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1e0b19; --panel: #2f1329; --ink: #ffe8f2; --muted: #c79ab4;
+  --pink: #ff5c9a; --pink-soft: #8a2a58; --mint: #2de0b3; --mint-ink: #052e24;
+  --sun: #ffd24a; --empty: #2b1026; color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+}
+.app {
+  height: 100%;
+  max-width: 560px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+.stage { flex: 1; min-height: 0; display: flex; justify-content: center; }
+.stage svg { width: 100%; height: 100%; display: block; }
+
+.mount-outline { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linejoin: round; }
+.mount-empty { fill: var(--empty); }
+.ground { stroke: var(--ink); stroke-width: 5; stroke-linecap: round; }
+.stripe-a { fill: var(--pink); }
+.stripe-b { fill: var(--pink-soft); }
+.sp-a { fill: var(--mint); }
+.sp-b { fill: var(--sun); }
+.sp-c { fill: #ffffff; }
+.sp-d { fill: var(--ink); }
+.crest { fill: none; stroke: #ffffff; stroke-width: 3; stroke-linecap: round; }
+.cherry { fill: var(--pink); stroke: var(--ink); stroke-width: 4; }
+.cherry-stem { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; fill: none; }
+.cherry-shine { fill: #ffffff; opacity: 0.85; }
+
+#fill { transition: transform 0.7s cubic-bezier(.3,.8,.3,1); }
+.wave { animation: drift 5s linear infinite; }
+@keyframes drift { to { transform: translateX(-40px); } }
+
+.readout { text-align: center; display: grid; gap: 2px; }
+.count {
+  font-family: var(--display);
+  font-size: clamp(3rem, 14vw, 4.4rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.count small { font-size: 0.35em; color: var(--muted); margin-left: 6px; letter-spacing: 0.04em; }
+.note { margin: 0; min-height: 1.4em; color: var(--muted); font-size: 0.95rem; text-wrap: balance; }
+.hint { margin: 0; text-align: center; font-weight: 600; font-size: 0.95rem; text-wrap: balance; }
+.hint.open { color: var(--ink); }
+
+.bar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 4px; }
+.btn {
+  font: inherit;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+  min-height: 60px;
+  padding: 10px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: 0 5px 0 var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.btn:active:not([aria-disabled="true"]):not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+.btn.fill { background: var(--mint); color: var(--mint-ink); }
+.btn.drain { background: var(--panel); }
+.btn[aria-disabled="true"], .btn:disabled {
+  background: transparent; color: var(--muted); border-style: dashed;
+  box-shadow: none; cursor: not-allowed; opacity: 0.85;
+}
+.btn:focus-visible, .field input:focus-visible, .link:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* Dialog */
+dialog {
+  width: min(94vw, 480px);
+  max-height: 92dvh;
+  padding: 0;
+  border: 3px solid var(--ink);
+  border-radius: 24px;
+  background: var(--panel);
+  color: var(--ink);
+  overflow: auto;
+}
+dialog::backdrop { background: rgba(40, 10, 30, 0.6); }
+.sheet { padding: 18px 18px 20px; display: grid; gap: 14px; }
+.sheet h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.6rem; }
+.sheet p { margin: 0; color: var(--muted); }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 96px 64px; gap: 10px; align-items: center; }
+.row label { display: grid; min-width: 0; font-weight: 600; }
+.row label span { font-weight: 400; font-size: 0.85rem; color: var(--muted); }
+.field { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.field input {
+  width: 100%; min-width: 0;
+  font: inherit; font-variant-numeric: tabular-nums; text-align: right;
+  padding: 8px 10px;
+  border: 2px solid var(--ink); border-radius: 12px;
+  background: var(--bg); color: var(--ink);
+}
+.unit { font-size: 0.85rem; color: var(--muted); min-width: 0; }
+.gain { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gain.zero { color: var(--muted); font-weight: 400; }
+.total {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding-top: 12px; border-top: 3px dotted var(--ink);
+  font-family: var(--display); font-size: 1.5rem;
+}
+.total output { font-variant-numeric: tabular-nums; }
+.cap { color: var(--pink); font-weight: 600; min-height: 1.3em; }
+.actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+.actions .btn { font-size: 1.1rem; min-height: 52px; }
+
+
+[hidden] { display: none !important; }
+#flowArt { display: flex; justify-content: center; }
+#flowArt svg { width: 170px; max-width: 100%; height: auto; }
+#flowText { color: var(--ink); font-weight: 500; text-wrap: balance; }
+#flowList { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-variant-numeric: tabular-nums; }
+#flowActions { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.a { stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.a-plate { fill: var(--empty); }
+.a-pink { fill: var(--pink); }
+.a-white { fill: #ffffff; }
+.a-sun { fill: var(--sun); }
+.a-mint { fill: var(--mint); }
+.a-line { fill: none; stroke-width: 2.5; }
+
+.pick { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) auto; gap: 8px; align-items: stretch; }
+.pick .sortbtn, .pick input {
+  min-height: 52px; min-width: 0; font: inherit; font-weight: 600;
+  padding: 8px 12px; border: 3px solid var(--ink); border-radius: 16px;
+  background: var(--bg); color: var(--ink);
+}
+.pick input { text-align: center; font-variant-numeric: tabular-nums; }
+.pick .sortbtn:focus-visible, .pick input:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.pick .sortbtn {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+.pick .sortbtn::after { content: '\25BE'; flex: none; }
+.menu { display: grid; gap: 6px; }
+.menu button {
+  font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+  padding: 12px 14px; min-height: 48px;
+  border: 2px solid var(--ink); border-radius: 14px;
+  background: var(--panel); color: var(--ink);
+}
+.menu button:hover { background: var(--mint); color: var(--mint-ink); }
+.menu button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.pick .btn { min-height: 52px; font-size: 1.1rem; padding: 8px 16px; }
+
+.sheet p.rate { margin-top: 8px; padding: 8px 12px; border-radius: 12px; background: var(--empty); color: var(--ink); font-weight: 600; }
+
+.fur { fill: #1f1d26; }
+.white-fur { fill: #ffffff; }
+.poop { fill: #8a5a3c; }
+#fill.nolag { transition: none; }
+.cat-pink { fill: #ff8fb3; }
+.cat-ink { fill: var(--ink); }
+.mouse-body { fill: #c9c9d6; }
+.tail-out { fill: none; stroke: var(--ink); stroke-width: 9; stroke-linecap: round; }
+.tail-in { fill: none; stroke: #1f1d26; stroke-width: 3.6; stroke-linecap: round; }
+.arm-out { fill: none; stroke: var(--ink); stroke-width: 9; stroke-linecap: round; }
+.arm-in { fill: none; stroke: #1f1d26; stroke-width: 3.6; stroke-linecap: round; }
+
+#intro {
+  --ink: #3a0f2c; --pink: #ff3d86; --pink-soft: #ffb3d1; --mint: #1fcfa3; --mint-ink: #052e24;
+  --sun: #ffc21a; --empty: #ffe2ee; --bg: #fff1f6; --panel: #ffffff; --muted: #7a4a68;
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--bg); color: var(--ink);
+  opacity: 0; transition: opacity 0.7s ease;
+}
+#intro.show { opacity: 1; }
+.introFrame {
+  position: relative; height: 100%;
+  width: min(100vw, 80dvh, 480px); margin-inline: auto;
+  overflow: hidden; background: #ffe3ea;
+}
+.introFrame svg { width: 100%; height: 100%; display: block; }
+.introChoice {
+  position: absolute; left: 0; right: 0;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  padding-inline: 16px; display: grid; gap: 12px;
+}
+.introChoice .btn { font-size: 1.15rem; }
+@media (prefers-reduced-motion: reduce) { #intro { transition: none; } }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.iconbtn {
+  flex: none; width: 44px; height: 44px; padding: 0;
+  display: grid; place-items: center;
+  border: 3px solid var(--ink); border-radius: 50%;
+  background: var(--panel); color: var(--ink);
+  box-shadow: 0 3px 0 var(--ink); cursor: pointer; touch-action: manipulation;
+}
+.iconbtn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.iconbtn:disabled { opacity: 0.6; cursor: progress; }
+.iconbtn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.iconbtn.spin svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .iconbtn.spin svg { animation: none; } }
+
+@media (max-width: 380px) {
+  .row { grid-template-columns: minmax(0, 1fr) 84px 52px; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wave { animation: none; }
+  #fill { transition: none; }
+  .btn { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="top">
+    <h1>Aikas Candy Mountain</h1>
+    <button class="iconbtn" id="btnUpdate" type="button" aria-label="Nach Updates suchen" title="Nach Updates suchen">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+  <div class="stage">
+    <svg id="mountain" viewBox="-50 0 450 320" role="img" aria-label="Candy Mountain, 0 von 1000 CME">
+      <defs>
+        <clipPath id="mt"><path id="mtShape" d="M12 300 C70 230 130 140 178 70 C190 52 210 52 222 70 C250 108 270 140 292 128 C310 118 322 140 340 172 C358 206 376 262 388 300 Z"/></clipPath>
+        <pattern id="stripes" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+          <rect class="stripe-a" x="0" y="0" width="28" height="28"/>
+          <rect class="stripe-b" x="14" y="0" width="14" height="28"/>
+        </pattern>
+        <pattern id="sprinkles" width="64" height="64" patternUnits="userSpaceOnUse">
+          <rect class="sp-a" x="6" y="8" width="11" height="4.5" rx="2.2" transform="rotate(28 11 10)"/>
+          <rect class="sp-b" x="38" y="6" width="11" height="4.5" rx="2.2" transform="rotate(-40 43 8)"/>
+          <rect class="sp-c" x="22" y="26" width="11" height="4.5" rx="2.2" transform="rotate(70 27 28)"/>
+          <rect class="sp-d" x="50" y="30" width="11" height="4.5" rx="2.2" transform="rotate(-15 55 32)"/>
+          <rect class="sp-b" x="4" y="42" width="11" height="4.5" rx="2.2" transform="rotate(-60 9 44)"/>
+          <rect class="sp-a" x="34" y="48" width="11" height="4.5" rx="2.2" transform="rotate(20 39 50)"/>
+          <rect class="sp-c" x="52" y="54" width="11" height="4.5" rx="2.2" transform="rotate(55 57 56)"/>
+        </pattern>
+      </defs>
+
+      <use href="#mtShape" class="mount-empty"/>
+      <g clip-path="url(#mt)">
+        <g id="fill" style="transform: translateY(306px)">
+          <g class="wave">
+            <path id="waveA" fill="url(#stripes)"/>
+            <path id="waveB" fill="url(#sprinkles)"/>
+            <path id="waveC" class="crest"/>
+          </g>
+        </g>
+      </g>
+      <use href="#mtShape" class="mount-outline"/>
+      <line class="ground" x1="-46" y1="302" x2="396" y2="302"/>
+
+      <path class="cherry-stem" d="M200 40 C200 30 206 22 214 18"/>
+      <circle class="cherry" cx="200" cy="46" r="10"/>
+      <circle class="cherry-shine" cx="196.5" cy="42.5" r="2.6"/>
+
+      <g id="catA" display="none"></g>
+      <g id="catB" display="none"></g>
+      <g id="poop" visibility="hidden">
+        <ellipse class="a poop" cx="0" cy="3.5" rx="7" ry="3.6"/>
+        <ellipse class="a poop" cx="0" cy="-1" rx="5" ry="3.2"/>
+        <ellipse class="a poop" cx="0" cy="-4.6" rx="3" ry="2.6"/>
+      </g>
+      <g id="mouse" visibility="hidden" transform="translate(0 0)">
+        <path class="a a-line" d="M-8 1 C-17 3 -17 -6 -11 -8"/>
+        <ellipse class="a mouse-body" cx="0" cy="0" rx="9" ry="6"/>
+        <circle class="a cat-pink" cx="-1" cy="-6" r="3.6"/>
+        <circle class="cat-ink" cx="5" cy="-2" r="1.2"/>
+        <circle class="cat-pink" cx="9" cy="0.5" r="1.4"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="readout">
+    <div class="count"><span id="count">0</span><small>/ 1.000 CME</small></div>
+    <p class="note" id="note" aria-live="polite"></p>
+  </div>
+
+  <p class="hint" id="hint"></p>
+
+  <div class="bar">
+    <button class="btn fill" id="btnFill" type="button">Füllen</button>
+    <button class="btn drain" id="btnDrain" type="button">Leeren</button>
+  </div>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <form class="sheet" id="form" method="dialog" novalidate>
+    <div>
+      <h2 id="dlgTitle">Berg füllen</h2>
+      <p>Trage ein, was du gesammelt und geschafft hast. Die App rechnet in CME um.</p>
+      <p class="rate" id="rateInfo"></p>
+    </div>
+    <div class="rows" id="rows"></div>
+    <div class="total"><span>Gesamt</span><output id="sum" for="rows">+0 CME</output></div>
+    <div class="cap" id="cap" aria-live="polite"></div>
+    <div class="actions">
+      <button class="btn" type="button" id="btnCancel">Abbrechen</button>
+      <button class="btn fill" type="submit" id="btnApply">In den Berg füllen</button>
+    </div>
+  </form>
+</dialog>
+
+
+<div id="intro" role="dialog" aria-modal="true" aria-label="Aika wird geweckt" hidden>
+  <div class="introFrame">
+    <svg id="introSvg" viewBox="0 0 400 500" preserveAspectRatio="xMidYMid meet" style="overflow: visible" aria-hidden="true"></svg>
+    <div class="introChoice" id="introChoice" hidden>
+      <button class="btn fill" id="introYes" type="button">Ja, auf zum Candy Mountain!</button>
+      <button class="btn" id="introNo" type="button">Nein, noch fünf Minuten</button>
+    </div>
+  </div>
+</div>
+
+<dialog id="upd" aria-labelledby="updTitle">
+  <div class="sheet">
+    <h2 id="updTitle">Update verfügbar</h2>
+    <p id="updText"></p>
+    <div class="actions">
+      <button class="btn" id="updNo" type="button">Nein</button>
+      <button class="btn fill" id="updYes" type="button">Ja</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="flow" aria-labelledby="flowTitle">
+  <div class="sheet">
+    <h2 id="flowTitle"></h2>
+    <div id="flowArt" hidden></div>
+    <p id="flowText" hidden></p>
+    <div class="pick" id="flowPick" hidden>
+      <button type="button" class="sortbtn" id="pickSort" aria-haspopup="listbox" aria-expanded="false">Sorte</button>
+      <input id="pickAmount" type="number" min="1" max="99" step="1" inputmode="numeric" value="1" aria-label="Anzahl">
+      <button type="button" class="btn fill" id="pickOk">OK</button>
+    </div>
+    <div class="menu" id="pickMenu" role="listbox" hidden></div>
+    <ul id="flowList" hidden></ul>
+    <div class="actions" id="flowActions"></div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var MAX = 1000;
+  var Y_EMPTY = 306, Y_FULL = 46;
+  var LS_KEY = 'aika-candy-mountain-v1';
+
+  var RULES = [
+    { id: 'muell',  label: 'Müllsammeln',       unit: 'g',      hint: '1 g = 1 CME',     per: 1 },
+    { id: 'laufen', label: 'Laufen',            unit: 'm',      hint: '100 m = 1 CME',   per: 100 },
+    { id: 'rad',    label: 'Radfahren',         unit: 'm',      hint: '500 m = 1 CME',   per: 500 },
+    { id: 'k4',     label: 'Klettern Grad 4',   unit: 'Routen', hint: '1 CME je Route',  mult: 1 },
+    { id: 'k5',     label: 'Klettern Grad 5',   unit: 'Routen', hint: '2 CME je Route',  mult: 2 },
+    { id: 'k6',     label: 'Klettern Grad 6',   unit: 'Routen', hint: '4 CME je Route',  mult: 4 },
+    { id: 'sup',    label: 'Stand-up-Paddeln',  unit: 'm',      hint: '300 m = 1 CME',   per: 300 }
+  ];
+
+  var state = { level: 0, lastFill: null, fills: 0 };
+  var displayLevel = null, busy = false, pendingLick = null;
+  var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  var $ = function (id) { return document.getElementById(id); };
+  var elCount = $('count'), elNote = $('note'), elHint = $('hint');
+  var btnFill = $('btnFill'), btnDrain = $('btnDrain');
+  var dlg = $('dlg'), form = $('form'), rowsEl = $('rows');
+  var elSum = $('sum'), elCap = $('cap'), btnApply = $('btnApply'), btnCancel = $('btnCancel');
+  var fmt = function (n) { return n.toLocaleString('de-DE'); };
+
+  /* Wellenkante */
+  (function buildWave() {
+    var top = 'M-80 6 q10 -8 20 0';
+    for (var i = 0; i < 31; i++) top += ' t20 0';
+    $('waveA').setAttribute('d', top + ' V420 H-80 Z');
+    $('waveB').setAttribute('d', top + ' V420 H-80 Z');
+    $('waveC').setAttribute('d', top);
+  })();
+
+  /* Tagesfaktor: act = Müll, Laufen, Rad, Paddeln; climb = Klettern. Werte als [Zähler, Nenner]. */
+  function easterSunday(y) {
+    var a = y % 19, b = Math.floor(y / 100), c = y % 100;
+    var d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+    var g = Math.floor((b - f + 1) / 3);
+    var h = (19 * a + b - d - g + 15) % 30;
+    var i = Math.floor(c / 4), k = c % 4;
+    var l = (32 + 2 * e + 2 * i - h - k) % 7;
+    var m = Math.floor((a + 11 * h + 22 * l) / 451);
+    var month = Math.floor((h + l - 7 * m + 114) / 31);
+    var day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(y, month - 1, day);
+  }
+  function rateFor(now) {
+    var mo = now.getMonth(), da = now.getDate();
+    var midnight = new Date(now.getFullYear(), mo, da);
+    if (mo === 9 && da === 20) {
+      return { act: [1, 1], climb: [1, 1], label: 'Fülltag 20.10.: volle CME' };
+    }
+    if (mo === 11 && da >= 24 && da <= 26) {
+      return { act: [5, 10], climb: [5, 10], label: 'Weihnachten: 5/10 der CME' };
+    }
+    var diff = Math.round((midnight - easterSunday(now.getFullYear())) / 86400000);
+    if (diff === 0 || diff === -1) {
+      return { act: [5, 10], climb: [5, 10], label: 'Osterwochenende: 5/10 der CME' };
+    }
+    if (mo === 11 && da === 31) {
+      return { act: [1, 10], climb: [2, 1], label: 'Silvester: Klettern doppelt, sonst 1/10 der CME' };
+    }
+    return { act: [1, 10], climb: [1, 10], label: 'Heute zählen 1/10 der CME' };
+  }
+
+  var noteTimer = null;
+  function baseNote() {
+    if (displayLevel !== null) return '';
+    if (state.level >= MAX) return 'Gipfel erreicht. Der Berg ist voll.';
+    if (state.level === 0) return 'Der Berg wartet auf seine erste Füllung.';
+    if (state.lastFill) return 'Letzte Füllung: ' + state.lastFill.date + ' · +' + fmt(state.lastFill.gained) + ' CME';
+    return '';
+  }
+  function flash(text) {
+    elNote.textContent = text;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(function () { elNote.textContent = baseNote(); }, 3500);
+  }
+
+  function render() {
+    var lv = displayLevel !== null ? displayLevel : state.level;
+    elCount.textContent = fmt(Math.round(lv));
+    var y = Y_EMPTY - (lv / MAX) * (Y_EMPTY - Y_FULL);
+    $('fill').style.transform = 'translateY(' + y + 'px)';
+    $('mountain').setAttribute('aria-label', 'Candy Mountain, ' + fmt(Math.round(lv)) + ' von ' + fmt(MAX) + ' CME');
+
+    elHint.className = 'hint';
+    elHint.textContent = rateFor(new Date()).label;
+    if (!noteTimer) elNote.textContent = baseNote();
+  }
+
+  /* Speicherung: Konto-Datenbank (db), Spiegel im Browser */
+  var ref = null, writing = false, dirty = false, saveTimer = null;
+
+  function mirror() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  function loadMirror() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (s && typeof s.level === 'number') {
+        state.level = Math.min(MAX, Math.max(0, Math.floor(s.level)));
+        state.lastFill = s.lastFill || null;
+        if (typeof s.fills === 'number') state.fills = s.fills;
+      }
+    } catch (e) {}
+  }
+  async function flush() {
+    if (!ref) return;
+    if (writing) { dirty = true; return; }
+    writing = true;
+    try {
+      do {
+        dirty = false;
+        await ref.set({ level: state.level, lastFill: state.lastFill, fills: state.fills });
+      } while (dirty);
+    } catch (e) { /* Spiegel im Browser bleibt erhalten */ }
+    writing = false;
+  }
+  function scheduleSave() {
+    mirror();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, 400);
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { clearTimeout(saveTimer); flush(); } else { render(); }
+  });
+
+  async function initCloud() {
+    try {
+      if (!window.claude || !window.claude.use) return;
+      var user = await window.claude.use('user');
+      var db = await window.claude.use('db');
+      if (!user || !db) return;
+      var uid = await user.id();
+      if (!uid) return;
+      ref = db.doc('data/users/' + uid + '/state');
+      ref.onSnapshot(function (snap) {
+        if (!snap.exists || writing || dirty || saveTimer) return;
+        var d = snap.data() || {};
+        if (typeof d.level === 'number') {
+          state.level = Math.min(MAX, Math.max(0, Math.floor(d.level)));
+          state.lastFill = d.lastFill || null;
+          if (typeof d.fills === 'number') state.fills = d.fills;
+          mirror();
+          render();
+        }
+      }, function () { ref = null; });
+    } catch (e) { ref = null; }
+  }
+
+  /* Leeren: Ablauf in Fenstern */
+  var flow = $('flow'), flowTitle = $('flowTitle'), flowArt = $('flowArt');
+  var flowText = $('flowText'), flowList = $('flowList'), flowActions = $('flowActions');
+
+  var pickWrap = $('flowPick'), pickSort = $('pickSort'), pickMenu = $('pickMenu'), pickAmount = $('pickAmount'), pickOk = $('pickOk');
+  var chosen = '';
+  var LIMIT = { candy: 2, cake: 1 };
+  var UNIT = {
+    candy: { cost: 10, art: 'bar' },
+    cake:  { cost: 50, art: 'piece' }
+  };
+  var SORTS = {
+    candy: ['Schokolade', 'Eis', 'Kekse', 'Gezuckertes Obst'],
+    cake:  ['Apfel', 'Tiramisu', 'Bananenbrot', 'Erdbeeren']
+  };
+  var ART = {
+    cake: '<svg viewBox="0 0 120 90" aria-hidden="true"><ellipse class="a a-plate" cx="60" cy="80" rx="52" ry="7"/><rect class="a a-pink" x="20" y="40" width="80" height="38" rx="8"/><rect class="a a-white" x="20" y="34" width="80" height="16" rx="8"/><rect class="a a-white" x="32" y="46" width="9" height="16" rx="4.5"/><rect class="a a-white" x="58" y="46" width="9" height="11" rx="4.5"/><rect class="a a-white" x="80" y="46" width="9" height="18" rx="4.5"/><circle class="a a-pink" cx="60" cy="26" r="8"/></svg>',
+    pack: '<svg viewBox="0 0 120 90" aria-hidden="true"><path class="a a-sun" d="M30 20 L90 20 L97 82 L23 82 Z"/><rect class="a a-mint" x="27" y="10" width="66" height="12" rx="3"/><circle class="a a-pink" cx="48" cy="50" r="8"/><circle class="a a-mint" cx="73" cy="44" r="8"/><circle class="a a-white" cx="62" cy="68" r="8"/></svg>',
+    bar:  '<svg viewBox="0 0 120 90" aria-hidden="true"><rect class="a a-mint" x="16" y="24" width="88" height="42" rx="7"/><path class="a a-line" d="M38 24 V66 M60 24 V66 M82 24 V66 M16 45 H104"/></svg>',
+    piece:'<svg viewBox="0 0 120 90" aria-hidden="true"><ellipse class="a a-plate" cx="60" cy="78" rx="50" ry="6"/><rect class="a a-pink" x="22" y="55" width="76" height="20" rx="5"/><rect class="a a-white" x="22" y="47" width="76" height="9"/><rect class="a a-pink" x="22" y="36" width="76" height="12" rx="5"/><circle class="a a-pink" cx="60" cy="28" r="7"/></svg>'
+  };
+
+  function openFlow() {
+    if (busy) return;
+    show('sure');
+    if (typeof flow.showModal === 'function') flow.showModal(); else flow.setAttribute('open', '');
+    focusFirst();
+  }
+  function closeFlow() {
+    if (typeof flow.close === 'function') flow.close(); else flow.removeAttribute('open');
+  }
+  function focusFirst() {
+    var b = flowActions.querySelector('button');
+    if (b) b.focus();
+  }
+
+  function show(step, arg) {
+    var title = '', text = '', art = '', list = [], btns = [];
+
+    if (step === 'sure') {
+      title = 'Wirklich?';
+      btns = [['Ja', 'fill', function () { show('pick'); }], ['Nein', '', closeFlow]];
+    } else if (step === 'pick') {
+      title = 'Candy oder Cake?';
+      btns = [['Candy', 'fill', function () { show('whole', 'candy'); }], ['Cake', 'fill', function () { show('whole', 'cake'); }]];
+    } else if (step === 'whole') {
+      title = arg === 'cake' ? 'Ein ganzer Kuchen' : 'Eine ganze Packung Süßigkeiten';
+      art = arg === 'cake' ? ART.cake : ART.pack;
+      text = 'Soll es das sein?';
+      btns = [['Ja', 'fill', function () { show('aika'); }], ['Nein', '', function () { show('rather', arg); }]];
+    } else if (step === 'aika') {
+      title = 'Nur für Aika';
+      text = 'Diese App ist nur für Aika bestimmt und nicht für dich, Molly.';
+      btns = [['OK', 'fill', closeFlow]];
+    } else if (step === 'rather') {
+      title = 'Also doch lieber nichts naschen?';
+      btns = [['Ja', 'fill', function () { show('good'); }], ['Nein', '', function () { show('what', arg); }]];
+    } else if (step === 'good') {
+      title = 'Sehr gut';
+      text = 'Das sind eh nur leere Kalorien.';
+      btns = [['OK', 'fill', closeFlow]];
+    } else if (step === 'what') {
+      title = 'Was denn nun?';
+      text = 'Wähle eine Sorte und die Anzahl.';
+      chosen = '';
+      pickSort.textContent = 'Sorte';
+      pickSort.setAttribute('aria-expanded', 'false');
+      pickMenu.textContent = '';
+      SORTS[arg].forEach(function (n) {
+        var o = document.createElement('button');
+        o.type = 'button';
+        o.setAttribute('role', 'option');
+        o.textContent = n;
+        o.addEventListener('click', function () {
+          chosen = n;
+          pickSort.textContent = n;
+          pickMenu.hidden = true;
+          pickSort.setAttribute('aria-expanded', 'false');
+          pickSort.focus();
+        });
+        pickMenu.appendChild(o);
+      });
+      pickSort.onclick = function () {
+        pickMenu.hidden = !pickMenu.hidden;
+        pickSort.setAttribute('aria-expanded', String(!pickMenu.hidden));
+      };
+      pickAmount.value = '1';
+      pickOk.onclick = function () {
+        var amount = Math.floor(Number(pickAmount.value));
+        if (!chosen) { flowText.textContent = 'Bitte zuerst eine Sorte wählen.'; pickSort.focus(); return; }
+        if (!isFinite(amount) || amount < 1) { flowText.textContent = 'Die Anzahl muss mindestens 1 betragen.'; pickAmount.focus(); return; }
+        if (amount > LIMIT[arg]) { show('warn'); return; }
+        show('cost', { kind: arg, sort: chosen, amount: Math.min(amount, 99) });
+      };
+      btns = [['Abbrechen', '', closeFlow]];
+    } else if (step === 'warn') {
+      title = 'Warnung';
+      text = 'Das ist die letzte Warnung, Molly!';
+      btns = [['OK', 'fill', closeFlow]];
+    } else if (step === 'cost') {
+      var u = UNIT[arg.kind];
+      var total = arg.amount * u.cost;
+      title = arg.amount + ' \u00d7 ' + arg.sort;
+      art = ART[u.art];
+      if (state.level < total) {
+        text = 'Zu wenig CME im Berg. Du brauchst ' + fmt(total) + ' CME, es fehlen ' + fmt(total - state.level) + ' CME.';
+        btns = [['OK', 'fill', closeFlow]];
+      } else {
+        text = title + ' kostet ' + fmt(total) + ' CME. Im Berg sind ' + fmt(state.level) + ' CME. Soll es sein?';
+        btns = [['Ja', 'fill', function () {
+          var before = state.level;
+          state.level = Math.max(0, state.level - total);
+          scheduleSave();
+          if (reduceMotion) { render(); flash('\u2212' + fmt(total) + ' CME'); }
+          else { displayLevel = before; pendingLick = { before: before, after: state.level, total: total }; render(); }
+          show('earn', total);
+        }], ['Nein', '', closeFlow]];
+      }
+    } else if (step === 'earn') {
+      var cost = arg;
+      title = 'So holst du die ' + fmt(cost) + ' CME zurück';
+      RULES.forEach(function (r) {
+        var amount = r.per ? cost * r.per : Math.ceil(cost / r.mult);
+        list.push(r.label + ': ' + fmt(amount) + ' ' + r.unit);
+      });
+      btns = [['OK', 'fill', closeFlow]];
+    }
+
+    pickWrap.hidden = step !== 'what';
+    pickMenu.hidden = true;
+    flowTitle.textContent = title;
+    flowArt.innerHTML = art;
+    flowArt.hidden = !art;
+    flowText.textContent = text;
+    flowText.hidden = !text;
+    flowList.textContent = '';
+    list.forEach(function (t) {
+      var li = document.createElement('li');
+      li.textContent = t;
+      flowList.appendChild(li);
+    });
+    flowList.hidden = list.length === 0;
+    flowActions.textContent = '';
+    btns.forEach(function (b) {
+      var el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'btn' + (b[1] ? ' ' + b[1] : '');
+      el.textContent = b[0];
+      el.addEventListener('click', b[2]);
+      flowActions.appendChild(el);
+    });
+    if (flow.open) focusFirst();
+  }
+
+  btnDrain.addEventListener('click', openFlow);
+  flow.addEventListener('close', function () {
+    if (!pendingLick) return;
+    var pl = pendingLick;
+    pendingLick = null;
+    startLick(pl);
+  });
+  flow.addEventListener('click', function (e) { if (e.target === flow) closeFlow(); });
+
+  /* Katzen: A = schwarz (wirft Maus), B = schwarz/weiß (macht ein Häufchen) */
+  function catMarkup(tux) {
+    var paws = tux
+      ? '<rect x="-24" y="-3" width="7" height="5" rx="2.5" fill="#ffffff"/><rect x="-14" y="-3" width="7" height="5" rx="2.5" fill="#ffffff"/><rect x="12" y="-3" width="7" height="5" rx="2.5" fill="#ffffff"/>'
+      : '';
+    var chest = tux ? '<ellipse cx="17" cy="-17" rx="8" ry="10" fill="#ffffff"/>' : '';
+    var muzzle = tux
+      ? '<ellipse cx="30" cy="-32" rx="7.5" ry="6" fill="#ffffff"/><polygon points="24,-48 20.5,-40 27.5,-40" fill="#ffffff"/>'
+      : '';
+    var eye = function (cx) {
+      return '<circle cx="' + cx + '" cy="-38" r="2.8" fill="#ffd24a"/><ellipse cx="' + cx + '" cy="-38" rx="0.8" ry="2.1" fill="#111111"/>';
+    };
+    return '<g class="flip">'
+      + '<path class="a a-white cloud" d="M-44 10 C-52 0 -38 -4 -30 0 C-26 -10 -8 -10 -4 -2 C4 -10 22 -8 24 0 C36 -6 48 2 42 10 C40 14 -40 14 -44 10 Z"/>'
+      + '<g class="bodyG">'
+      + '<g class="tail" transform="rotate(0 -26 -16)"><path class="tail-out" d="M-26 -16 C-46 -18 -46 -44 -32 -46"/><path class="tail-in" d="M-26 -16 C-46 -18 -46 -44 -32 -46"/></g>'
+      + '<rect class="a fur" x="-24" y="-10" width="7" height="12" rx="3"/>'
+      + '<rect class="a fur" x="-14" y="-10" width="7" height="12" rx="3"/>'
+      + '<rect class="a fur" x="12" y="-10" width="7" height="12" rx="3"/>'
+      + paws
+      + '<ellipse class="a fur" cx="-2" cy="-20" rx="28" ry="14"/>'
+      + chest
+      + '<g class="arm" transform="rotate(0 16 -24)"><path class="arm-out" d="M16 -24 L28 -14"/><path class="arm-in" d="M16 -24 L28 -14"/><circle class="a ' + (tux ? 'white-fur' : 'fur') + '" cx="28" cy="-14" r="5"/></g>'
+      + '<g class="head">'
+      + '<circle class="a fur" cx="24" cy="-36" r="13"/>'
+      + '<polygon class="a fur" points="13,-44 15,-61 26,-48"/>'
+      + '<polygon class="a fur" points="27,-48 36,-60 37,-43"/>'
+      + '<polygon class="cat-pink" points="16,-47 17,-55 22,-49"/>'
+      + muzzle
+      + '<g class="eyes">' + eye(20) + eye(30) + '</g>'
+      + '<g class="eyesClosed" visibility="hidden"><path d="M17.5 -38 q2.5 -3 5 0 M27.5 -38 q2.5 -3 5 0" fill="none" stroke="#ffd24a" stroke-width="1.8" stroke-linecap="round"/></g>'
+      + '<path class="cat-pink" d="M22 -33 h5 l-2.5 3 z"/>'
+      + '<path style="stroke:var(--ink);stroke-width:1.4;fill:none" d="M31 -32 L42 -35 M31 -30 L42 -27"/>'
+      + '<ellipse class="tongue" cx="36" cy="-26" rx="3.2" ry="4.2" visibility="hidden" fill="#ff8fb3" stroke="var(--ink)" stroke-width="2"/>'
+      + '</g>'
+      + '</g></g>';
+  }
+  $('catA').innerHTML = catMarkup(false);
+  $('catB').innerHTML = catMarkup(true);
+
+  var CAT_X0 = -95;
+  function lerp(a, b, u) { return a + (b - a) * u; }
+  function clamp(u) { return Math.max(0, Math.min(1, u)); }
+  function ease(u) { return 1 - Math.pow(1 - u, 3); }
+  function tipOf(a) {
+    var r = a * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r);
+    return { x: 16 + 12 * c - 10 * sn, y: -24 + 12 * sn + 10 * c };
+  }
+  function newState() {
+    return { x: CAT_X0, y: 70, k: 1, bob: 0, sx: 1, armA: 0, tailA: 0, hx: 0, hy: 0, hr: 0,
+      squat: 0, closed: false, tongue: false, mouse: null, poop: null, level: undefined };
+  }
+
+  /* Katze A: kommt von links, wirft die Maus in den Berg */
+  function planThrow() {
+    var X1 = 118, Y = 70, TX = 205, TY = 150, launch = null;
+    return { cloud: true, end: 4100, landAt: 3140, at: function (t) {
+      var st = newState(), walking = false;
+      st.y = Y; st.x = X1;
+      if (t < 1700) { st.x = lerp(CAT_X0, X1, ease(t / 1700)); walking = true; }
+      else if (t >= 3300) { var ue = clamp((t - 3300) / 800); st.x = lerp(X1, CAT_X0, ue * ue); st.sx = -1; walking = true; }
+      else if (t >= 3000) st.sx = Math.cos(Math.PI * (t - 3000) / 300);
+      if (walking) st.bob = -Math.abs(Math.sin(t / 110)) * 3;
+      st.tailA = Math.sin(t / 160) * 12;
+      if (t >= 2000 && t < 2300) st.armA = lerp(0, -170, ease((t - 2000) / 300));
+      else if (t >= 2300 && t < 2420) st.armA = lerp(-170, -60, (t - 2300) / 120);
+      else if (t >= 2420 && t < 2700) st.armA = lerp(-60, 0, ease((t - 2420) / 280));
+      if (t >= 2000 && t < 2420) {
+        var p = tipOf(st.armA);
+        st.mouse = { x: st.x + p.x, y: Y + st.bob + p.y, r: st.armA + 40, s: 1 };
+      } else if (t >= 2420 && t < 3140) {
+        if (!launch) { var q = tipOf(-60); launch = { x: X1 + q.x, y: Y + q.y }; }
+        var u = (t - 2420) / 720;
+        st.mouse = {
+          x: lerp(launch.x, TX, u),
+          y: lerp(launch.y, TY, u) - 46 * 4 * u * (1 - u),
+          r: u * 720,
+          s: u > 0.85 ? lerp(1, 0, (u - 0.85) / 0.15) : 1
+        };
+      }
+      return st;
+    } };
+  }
+
+  /* Katze B: kommt von links, dreht sich um und macht ein Häufchen auf den Berg */
+  function planPoop() {
+    var X1 = 118, Y = 70, GY = 105;
+    return { cloud: true, end: 4500, landAt: 3500, at: function (t) {
+      var st = newState(), walking = false;
+      st.y = Y; st.x = X1;
+      if (t < 1700) { st.x = lerp(CAT_X0, X1, ease(t / 1700)); walking = true; }
+      else if (t >= 3700) { var ue = clamp((t - 3700) / 800); st.x = lerp(X1, CAT_X0, ue * ue); st.sx = -1; walking = true; }
+      else if (t >= 2300) st.sx = -1;
+      else if (t >= 2000) st.sx = Math.cos(Math.PI * (t - 2000) / 300);
+      if (walking) st.bob = -Math.abs(Math.sin(t / 110)) * 3;
+      st.tailA = Math.sin(t / 160) * 12;
+      if (t >= 2300 && t < 3700) {
+        var us = t < 3500 ? clamp((t - 2300) / 150) : 1 - clamp((t - 3500) / 200);
+        st.squat = 4 * us + (t < 3000 ? Math.sin(t / 22) * 0.7 * us : 0);
+        st.tailA = lerp(st.tailA, -40, us);
+        st.closed = us > 0.5;
+      }
+      if (t >= 3000 && t < 3500) {
+        var up = (t - 3000) / 500;
+        st.poop = { x: X1 + 34, y: lerp(Y - 10, GY, up * up), r: up * 40, s: 1 };
+      }
+      return st;
+    } };
+  }
+
+  /* Leeren: Katze kommt von unten links und leckt den Berg ab */
+  function planLick(pl) {
+    var X1 = 6, XL0 = -130, Y = 298.5;
+    return { cloud: false, end: 4300, landAt: null, at: function (t) {
+      var st = newState(), walking = false;
+      st.y = Y; st.k = 0.9; st.x = X1; st.level = pl.before;
+      if (t < 1400) { st.x = lerp(XL0, X1, ease(t / 1400)); walking = true; }
+      else if (t < 3200) {
+        st.level = lerp(pl.before, pl.after, ease((t - 1400) / 1800));
+        var sw = Math.sin((t - 1400) / 260 * 2 * Math.PI);
+        st.hx = 2.5 + 2.5 * sw; st.hr = 8; st.tongue = sw > -0.2;
+      } else {
+        st.level = pl.after;
+        if (t < 3450) st.sx = Math.cos(Math.PI * (t - 3200) / 250);
+        else { var ue = clamp((t - 3450) / 850); st.x = lerp(X1, XL0, ue * ue); st.sx = -1; walking = true; }
+      }
+      if (walking) st.bob = -Math.abs(Math.sin(t / 110)) * 2.5;
+      st.tailA = Math.sin(t / 160) * 12;
+      return st;
+    } };
+  }
+
+  function placeProp(el, o) {
+    if (!o) { el.setAttribute('visibility', 'hidden'); return; }
+    el.setAttribute('visibility', 'visible');
+    el.setAttribute('transform', 'translate(' + o.x.toFixed(1) + ' ' + o.y.toFixed(1) + ') rotate(' + o.r.toFixed(0) + ') scale(' + o.s.toFixed(2) + ')');
+  }
+
+  function runCat(kind, plan, onLand, onDone) {
+    var root = $(kind === 'A' ? 'catA' : 'catB');
+    var q = function (c) { return root.querySelector('.' + c); };
+    var P = { flip: q('flip'), cloud: q('cloud'), bodyG: q('bodyG'), tail: q('tail'), arm: q('arm'),
+      head: q('head'), eyes: q('eyes'), eyesClosed: q('eyesClosed'), tongue: q('tongue') };
+    var mouseEl = $('mouse'), poopEl = $('poop');
+    root.setAttribute('display', 'inline');
+    P.cloud.setAttribute('visibility', plan.cloud ? 'visible' : 'hidden');
+    var t0 = performance.now(), landed = false;
+
+    function finish() {
+      root.setAttribute('display', 'none');
+      mouseEl.setAttribute('visibility', 'hidden');
+      poopEl.setAttribute('visibility', 'hidden');
+      if (!landed && onLand) { landed = true; onLand(); }
+      onDone();
+    }
+    function frame(now) {
+      var t = now - t0, st = plan.at(t);
+      root.setAttribute('transform', 'translate(' + st.x.toFixed(1) + ' ' + (st.y + st.bob).toFixed(1) + ') scale(' + st.k + ')');
+      P.flip.setAttribute('transform', 'scale(' + st.sx.toFixed(3) + ' 1)');
+      P.tail.setAttribute('transform', 'rotate(' + st.tailA.toFixed(1) + ' -26 -16)');
+      P.arm.setAttribute('transform', 'rotate(' + st.armA.toFixed(1) + ' 16 -24)');
+      P.head.setAttribute('transform', 'translate(' + st.hx.toFixed(1) + ' ' + st.hy.toFixed(1) + ') rotate(' + st.hr.toFixed(1) + ' 14 -28)');
+      P.bodyG.setAttribute('transform', 'translate(0 ' + st.squat.toFixed(1) + ')');
+      P.eyes.setAttribute('visibility', st.closed ? 'hidden' : 'visible');
+      P.eyesClosed.setAttribute('visibility', st.closed ? 'visible' : 'hidden');
+      P.tongue.setAttribute('visibility', st.tongue ? 'visible' : 'hidden');
+      placeProp(mouseEl, st.mouse);
+      placeProp(poopEl, st.poop);
+      if (st.level !== undefined) { displayLevel = st.level; render(); }
+      if (!landed && plan.landAt !== null && onLand && t >= plan.landAt) { landed = true; onLand(); }
+      if (t >= plan.end) { finish(); return; }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function startLick(pl) {
+    busy = true;
+    var kind = Math.random() < 0.5 ? 'A' : 'B';
+    $('fill').classList.add('nolag');
+    runCat(kind, planLick(pl), null, function () {
+      $('fill').classList.remove('nolag');
+      displayLevel = null;
+      busy = false;
+      render();
+      flash('\u2212' + fmt(pl.total) + ' CME');
+    });
+  }
+
+  /* Anfangs-Szene: Aika wird von den Katzen geweckt (nur am 20.10.) */
+  function isIntroDay(d) { return true; }
+
+  var introEl = $('intro'), introSvg = $('introSvg'), introChoice = $('introChoice');
+  var INK = '#3a0f2c';
+
+  function introFace(cy, idp) {
+    return '<g id="' + idp + 'Open"><circle cx="-7" cy="' + (cy + 2) + '" r="2.3" fill="' + INK + '"/><circle cx="6" cy="' + (cy + 2) + '" r="2.3" fill="' + INK + '"/></g>'
+      + '<g id="' + idp + 'Closed" display="none"><path d="M-11 ' + (cy + 2) + ' q4 3.5 8 0 M2 ' + (cy + 2) + ' q4 3.5 8 0" fill="none" stroke="' + INK + '" stroke-width="2" stroke-linecap="round"/></g>'
+      + '<circle cx="-12" cy="' + (cy + 8) + '" r="3.2" fill="#ff9fb7" opacity="0.75"/><circle cx="11" cy="' + (cy + 8) + '" r="3.2" fill="#ff9fb7" opacity="0.75"/>'
+      + '<path d="M-4 ' + (cy + 11) + ' q4 3 8 0" fill="none" stroke="' + INK + '" stroke-width="2" stroke-linecap="round"/>';
+  }
+  function introHairBack(cy) {
+    return '<path d="M-27 ' + (cy - 8) + ' C-34 ' + (cy + 22) + ' -30 ' + (cy + 42) + ' -22 ' + (cy + 50) + ' L22 ' + (cy + 50) + ' C30 ' + (cy + 42) + ' 34 ' + (cy + 22) + ' 27 ' + (cy - 8) + ' C20 ' + (cy - 28) + ' -20 ' + (cy - 28) + ' -27 ' + (cy - 8) + ' Z" fill="#c23a14" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>';
+  }
+  function introHairFront(cy) {
+    return '<path d="M-20 ' + (cy - 4) + ' C-22 ' + (cy - 26) + ' 22 ' + (cy - 26) + ' 20 ' + (cy - 4) + ' C12 ' + (cy - 14) + ' -4 ' + (cy - 16) + ' -20 ' + (cy - 4) + ' Z" fill="#d9481c" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>';
+  }
+  function arm(x1, y1, x2, y2, color) {
+    var d = 'M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2;
+    return '<path d="' + d + '" stroke="' + INK + '" stroke-width="13" stroke-linecap="round" fill="none"/><path d="' + d + '" stroke="' + color + '" stroke-width="7" stroke-linecap="round" fill="none"/>';
+  }
+  function bubbleSvg(id, x, y, w, bx, tx, ty, lines, size) {
+    var h = lines.length * (size + 5) + 12;
+    var tail = '<path d="M' + (bx - 9) + ' ' + (y + h - 1) + ' L' + tx + ' ' + ty + ' L' + (bx + 9) + ' ' + (y + h - 1) + ' Z" fill="#ffffff" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>';
+    var box = '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="14" fill="#ffffff" stroke="' + INK + '" stroke-width="3"/>';
+    var cover = '<rect x="' + (bx - 7) + '" y="' + (y + h - 2.5) + '" width="14" height="5" fill="#ffffff"/>';
+    var tsp = lines.map(function (l, i) {
+      return '<tspan x="' + (x + w / 2) + '" y="' + (y + size + 7 + i * (size + 5)) + '">' + l + '</tspan>';
+    }).join('');
+    var txt = '<text font-family="Outfit, system-ui, sans-serif" font-weight="600" font-size="' + size + '" fill="' + INK + '" text-anchor="middle">' + tsp + '</text>';
+    return '<g id="' + id + '" display="none">' + tail + box + cover + txt + '</g>';
+  }
+
+  function buildScene() {
+    var s = '';
+    s += '<rect x="-700" y="-700" width="1800" height="1030" fill="#ffe3ea"/>';
+    s += '<rect x="-700" y="330" width="1800" height="900" fill="#e9b98d"/>';
+    s += '<path d="M-700 330 H1100" stroke="' + INK + '" stroke-width="4"/>';
+    s += '<path d="M-700 372 H1100 M-700 470 H1100 M-700 520 H1100" stroke="#c99669" stroke-width="2.5"/>';
+    s += '<g><rect x="28" y="70" width="112" height="130" rx="8" fill="#bfe9ff" stroke="' + INK + '" stroke-width="4"/><circle cx="62" cy="116" r="17" fill="#ffc21a" stroke="' + INK + '" stroke-width="3"/><path d="M84 70 V200 M28 135 H140" stroke="' + INK + '" stroke-width="4"/></g>';
+    s += '<g><rect x="172" y="82" width="72" height="56" rx="4" fill="#ffffff" stroke="' + INK + '" stroke-width="4"/><path d="M182 128 L208 96 L222 114 L230 106 L236 128 Z" fill="#ff7fb0" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/></g>';
+    s += '<ellipse cx="150" cy="432" rx="160" ry="28" fill="#ffb3d1" stroke="' + INK + '" stroke-width="4"/><ellipse cx="150" cy="432" rx="116" ry="17" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="10 8"/>';
+    /* Bett */
+    s += '<rect x="246" y="346" width="10" height="22" fill="#9a5b34" stroke="' + INK + '" stroke-width="3"/><rect x="366" y="346" width="10" height="22" fill="#9a5b34" stroke="' + INK + '" stroke-width="3"/>';
+    s += '<rect x="370" y="214" width="26" height="140" rx="8" fill="#b9733f" stroke="' + INK + '" stroke-width="4"/>';
+    s += '<rect x="238" y="296" width="14" height="58" rx="6" fill="#b9733f" stroke="' + INK + '" stroke-width="4"/>';
+    s += '<rect x="248" y="318" width="126" height="30" rx="8" fill="#ffffff" stroke="' + INK + '" stroke-width="3"/>';
+    s += '<ellipse cx="350" cy="296" rx="26" ry="14" fill="#ffffff" stroke="' + INK + '" stroke-width="3"/>';
+    /* Aika im Bett */
+    s += '<g id="iSit" transform="translate(330 318) rotate(20)">'
+      + introHairBack(-72)
+      + arm(-19, -44, -24, -12, '#7fe0c8')
+      + '<rect x="-19" y="-52" width="38" height="56" rx="12" fill="#7fe0c8" stroke="' + INK + '" stroke-width="3"/>'
+      + arm(19, -44, 24, -12, '#7fe0c8')
+      + '<circle cx="0" cy="-72" r="19" fill="#ffd9bd" stroke="' + INK + '" stroke-width="3"/>'
+      + introHairFront(-72) + introFace(-72, 'iSitEyes')
+      + '</g>';
+    s += '<path d="M252 324 C262 308 360 306 372 316 L372 348 H252 Z" fill="url(#stripes)" stroke="' + INK + '" stroke-width="4" stroke-linejoin="round"/>';
+    /* Katzen */
+    s += '<g id="iCatA" display="none"></g><g id="iCatB" display="none"></g>';
+    /* Aika stehend */
+    s += '<g id="iStand" display="none" transform="translate(300 420)">'
+      + introHairBack(-108)
+      + '<g id="iLegL"><rect x="-12" y="-44" width="10" height="42" rx="4" fill="#8b7be0" stroke="' + INK + '" stroke-width="3"/><ellipse cx="-7" cy="0" rx="8" ry="4.5" fill="#ff8fb3" stroke="' + INK + '" stroke-width="3"/></g>'
+      + '<g id="iLegR"><rect x="2" y="-44" width="10" height="42" rx="4" fill="#8b7be0" stroke="' + INK + '" stroke-width="3"/><ellipse cx="7" cy="0" rx="8" ry="4.5" fill="#ff8fb3" stroke="' + INK + '" stroke-width="3"/></g>'
+      + arm(-19, -80, -26, -46, '#7fe0c8')
+      + '<rect x="-19" y="-90" width="38" height="52" rx="12" fill="#7fe0c8" stroke="' + INK + '" stroke-width="3"/>'
+      + arm(19, -80, 26, -46, '#7fe0c8')
+      + '<circle cx="0" cy="-108" r="19" fill="#ffd9bd" stroke="' + INK + '" stroke-width="3"/>'
+      + introHairFront(-108) + introFace(-108, 'iStandEyes')
+      + '</g>';
+    /* Sprechblasen */
+    s += bubbleSvg('iMiauA', 170, 314, 58, 205, 214, 352, ['Miau!'], 15);
+    s += bubbleSvg('iMiauB', 82, 314, 58, 112, 114, 352, ['Miau!'], 15);
+    s += bubbleSvg('iSpeakA', 12, 176, 176, 168, 214, 350, ['Los, Aika, aufstehen!', 'Wir gehen zum', 'Candy Mountain!'], 15);
+    s += bubbleSvg('iSpeakB', 8, 290, 164, 108, 114, 352, ['Ja, Candy Mountain,', 'Aika!'], 15);
+    introSvg.innerHTML = s;
+  }
+
+  function sleep(ms, sp) { return new Promise(function (res) { setTimeout(res, ms * sp); }); }
+  function tween(ms, sp, fn) {
+    return new Promise(function (res) {
+      var t0 = performance.now(), d = Math.max(1, ms * sp);
+      function f(now) {
+        var u = Math.min(1, (now - t0) / d);
+        fn(u);
+        if (u < 1) requestAnimationFrame(f); else res();
+      }
+      requestAnimationFrame(f);
+    });
+  }
+
+  async function playIntro() {
+    var sp = reduceMotion ? 0.25 : 1;
+    var appEl = document.querySelector('.app');
+    var show = function (id, on) { var el = $(id); if (el) el.setAttribute('display', on ? 'inline' : 'none'); };
+    var active = true;
+
+    buildScene();
+    $('iCatA').innerHTML = catMarkup(false);
+    $('iCatB').innerHTML = catMarkup(true);
+    var mk = function (id, x) {
+      var root = $(id), q = function (c) { return root.querySelector('.' + c); };
+      q('cloud').setAttribute('visibility', 'hidden');
+      return { root: root, flip: q('flip'), tail: q('tail'), head: q('head'), x: x, bob: 0, sx: 1, hr: 0, hy: 0, walking: false };
+    };
+    var A = mk('iCatA', -120), B = mk('iCatB', -120);
+    var fig = { angle: 20 };
+    var stand = { x: 300, bob: 0, walking: false };
+    var CAT_Y = 415, CAT_K = 1.2;
+
+    function tick(now) {
+      if (!active) return;
+      [A, B].forEach(function (c) {
+        var bob = c.walking ? -Math.abs(Math.sin(now / 110)) * 3 : 0;
+        c.root.setAttribute('transform', 'translate(' + c.x.toFixed(1) + ' ' + (CAT_Y + bob).toFixed(1) + ') scale(' + CAT_K + ')');
+        c.flip.setAttribute('transform', 'scale(' + c.sx.toFixed(3) + ' 1)');
+        c.tail.setAttribute('transform', 'rotate(' + (Math.sin(now / 160) * 12).toFixed(1) + ' -26 -16)');
+        c.head.setAttribute('transform', 'translate(0 ' + c.hy.toFixed(1) + ') rotate(' + c.hr.toFixed(1) + ' 14 -28)');
+      });
+      $('iSit').setAttribute('transform', 'translate(330 318) rotate(' + fig.angle.toFixed(1) + ')');
+      var sw = stand.walking ? Math.sin(now / 110) * 18 : 0;
+      var sb = stand.walking ? -Math.abs(Math.sin(now / 110)) * 3 : 0;
+      $('iStand').setAttribute('transform', 'translate(' + stand.x.toFixed(1) + ' ' + (420 + sb).toFixed(1) + ')');
+      $('iLegL').setAttribute('transform', 'rotate(' + sw.toFixed(1) + ' -7 -42)');
+      $('iLegR').setAttribute('transform', 'rotate(' + (-sw).toFixed(1) + ' 7 -42)');
+      requestAnimationFrame(tick);
+    }
+
+    function eyes(open) {
+      show('iSitEyesOpen', open);
+      show('iSitEyesClosed', !open);
+    }
+    function walkTo(c, toX, ms) {
+      var from = c.x;
+      c.walking = true;
+      return tween(ms, sp, function (u) { c.x = lerp(from, toX, ease(u)); }).then(function () { c.walking = false; });
+    }
+    async function meow(c, id) {
+      show(id, true);
+      await tween(320, sp, function (u) { c.hr = -12 * Math.sin(Math.PI * u); c.hy = -2 * Math.sin(Math.PI * u); });
+      await sleep(420, sp);
+      show(id, false);
+    }
+    function waitChoice() {
+      return new Promise(function (res) {
+        var yes = $('introYes'), no = $('introNo');
+        function done(v) { yes.onclick = null; no.onclick = null; introChoice.hidden = true; res(v); }
+        yes.onclick = function () { done('yes'); };
+        no.onclick = function () { done('no'); };
+        introChoice.hidden = false;
+        yes.focus();
+      });
+    }
+    async function lean(toAngle, ms) {
+      var from = fig.angle;
+      await tween(ms, sp, function (u) { fig.angle = lerp(from, toAngle, ease(u)); });
+    }
+
+    appEl.inert = true;
+    eyes(false);
+    introEl.hidden = false;
+    requestAnimationFrame(tick);
+    requestAnimationFrame(function () { introEl.classList.add('show'); });
+    show('iCatA', true); show('iCatB', true);
+    await sleep(1100, sp);
+
+    /* Katzen kommen von links */
+    await Promise.all([walkTo(A, 185, 1900), sleep(450, sp).then(function () { return walkTo(B, 85, 1900); })]);
+    await sleep(400, sp);
+
+    /* 3 x Miau */
+    await meow(A, 'iMiauA'); await sleep(250, sp);
+    await meow(B, 'iMiauB'); await sleep(250, sp);
+    await meow(A, 'iMiauA'); await sleep(300, sp);
+
+    /* Aika wacht auf, die Katzen sprechen */
+    var answer = 'no';
+    while (answer === 'no') {
+      eyes(true);
+      var leanP = lean(-28, 700);
+      show('iSpeakA', true);
+      await leanP;
+      await sleep(2000, sp);
+      show('iSpeakB', true);
+      await sleep(1700, sp);
+      answer = await waitChoice();
+      if (answer === 'no') {
+        show('iSpeakA', false); show('iSpeakB', false);
+        await lean(20, 700);
+        eyes(false);
+        await sleep(1000, sp);
+      }
+    }
+
+    /* Aika steht auf, alle gehen nach links */
+    show('iSpeakA', false); show('iSpeakB', false);
+    show('iSit', false);
+    $('iSit').setAttribute('display', 'none');
+    show('iStand', true);
+    await sleep(500, sp);
+    await Promise.all([
+      tween(260, sp, function (u) { A.sx = Math.cos(Math.PI * u); }).then(function () { return walkOut(A, 0); }),
+      sleep(250, sp).then(function () { stand.walking = true; return tween(2300, sp, function (u) { stand.x = lerp(300, -140, u * u); }); }),
+      sleep(500, sp).then(function () { return tween(260, sp, function (u) { B.sx = Math.cos(Math.PI * u); }).then(function () { return walkOut(B, 0); }); })
+    ]);
+    function walkOut(c) {
+      var from = c.x;
+      c.walking = true;
+      return tween(2300, sp, function (u) { c.x = lerp(from, -150, u * u); });
+    }
+
+    introEl.classList.remove('show');
+    await sleep(700, sp);
+    introEl.hidden = true;
+    active = false;
+    appEl.inert = false;
+  }
+
+  /* Update-Prüfung */
+  var APP_VERSION = '1.0.0';
+  var PAGES_ORIGIN = 'https://catfatherindi.github.io';
+  var PAGES_URL = PAGES_ORIGIN + '/aikas-candy-mountain/';
+  var btnUpdate = $('btnUpdate'), upd = $('upd'), updText = $('updText');
+  var newerVersion = null;
+
+  function cmpVersion(a, b) {
+    var x = a.split('.').map(Number), y = b.split('.').map(Number);
+    for (var i = 0; i < 3; i++) {
+      var d = (x[i] || 0) - (y[i] || 0);
+      if (d) return d > 0 ? 1 : -1;
+    }
+    return 0;
+  }
+  async function checkUpdate() {
+    if (busy || btnUpdate.disabled) return;
+    btnUpdate.disabled = true;
+    btnUpdate.classList.add('spin');
+    try {
+      var res = await fetch(PAGES_URL + 'version.json?_=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('http');
+      var data = await res.json();
+      var v = String(data && data.version || '');
+      if (!/^\d+(\.\d+){0,2}$/.test(v)) throw new Error('format');
+      if (cmpVersion(v, APP_VERSION) > 0) {
+        newerVersion = v;
+        updText.textContent = 'Version ' + v + ' ist verfügbar (installiert: ' + APP_VERSION + '). Update laden? Dein Füllstand bleibt erhalten.';
+        if (typeof upd.showModal === 'function') upd.showModal(); else upd.setAttribute('open', '');
+      } else {
+        flash('Die App ist aktuell (Version ' + APP_VERSION + ').');
+      }
+    } catch (e) {
+      flash('Update-Prüfung hier nicht möglich.');
+    }
+    btnUpdate.disabled = false;
+    btnUpdate.classList.remove('spin');
+  }
+  function closeUpd() { if (typeof upd.close === 'function') upd.close(); else upd.removeAttribute('open'); }
+  btnUpdate.addEventListener('click', checkUpdate);
+  $('updNo').addEventListener('click', closeUpd);
+  upd.addEventListener('click', function (e) { if (e.target === upd) closeUpd(); });
+  $('updYes').addEventListener('click', async function () {
+    closeUpd();
+    if (location.origin !== PAGES_ORIGIN) {
+      flash('Diese Kopie aktualisiert sich nicht selbst. Die aktuelle App liegt unter ' + PAGES_URL);
+      return;
+    }
+    clearTimeout(saveTimer);
+    mirror();
+    try { await flush(); } catch (e) {}
+    flash('Update wird geladen …');
+    location.replace(PAGES_URL + '?v=' + encodeURIComponent(newerVersion));
+  });
+
+  /* Füllen-Dialog */
+  rowsEl.textContent = '';
+  RULES.forEach(function (r) {
+    var row = document.createElement('div');
+    row.className = 'row';
+
+    var lab = document.createElement('label');
+    lab.setAttribute('for', 'in-' + r.id);
+    lab.appendChild(document.createTextNode(r.label));
+    var hint = document.createElement('span');
+    hint.id = 'hint-' + r.id;
+    hint.textContent = r.hint;
+    lab.appendChild(hint);
+
+    var field = document.createElement('div');
+    field.className = 'field';
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.id = 'in-' + r.id;
+    input.min = '0';
+    input.step = '1';
+    input.inputMode = 'numeric';
+    input.placeholder = '0';
+    var unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.textContent = r.unit;
+    field.appendChild(input);
+    field.appendChild(unit);
+
+    var gain = document.createElement('div');
+    gain.className = 'gain zero';
+    gain.id = 'gain-' + r.id;
+    gain.textContent = '+0';
+
+    row.appendChild(lab);
+    row.appendChild(field);
+    row.appendChild(gain);
+    rowsEl.appendChild(row);
+    input.addEventListener('input', recalc);
+  });
+
+  function readValue(id) {
+    var v = Math.floor(Number($('in-' + id).value));
+    if (!isFinite(v) || v < 0) return 0;
+    return Math.min(v, 1e9);
+  }
+  function cmeFor(r, v, rate) {
+    if (r.per) return Math.floor(v * rate.act[0] / (r.per * rate.act[1]));
+    return Math.floor(v * r.mult * rate.climb[0] / rate.climb[1]);
+  }
+  function applyRate(rate) {
+    $('rateInfo').textContent = rate.label;
+    RULES.forEach(function (r) {
+      var el = $('hint-' + r.id), txt;
+      if (r.per) {
+        txt = fmt(r.per * rate.act[1] / rate.act[0]) + ' ' + r.unit + ' = 1 CME';
+      } else {
+        var n = r.mult * rate.climb[0], d = rate.climb[1];
+        txt = (n < d && d % n === 0) ? (d / n) + ' Routen = 1 CME' : fmt(n / d) + ' CME je Route';
+      }
+      el.textContent = txt;
+    });
+  }
+
+  var pendingGain = 0;
+  function recalc() {
+    var rate = rateFor(new Date());
+    applyRate(rate);
+    var total = 0;
+    RULES.forEach(function (r) {
+      var g = cmeFor(r, readValue(r.id), rate);
+      total += g;
+      var el = $('gain-' + r.id);
+      el.textContent = '+' + fmt(g);
+      el.className = 'gain' + (g === 0 ? ' zero' : '');
+    });
+    var room = MAX - state.level;
+    pendingGain = Math.min(total, room);
+    elSum.textContent = '+' + fmt(total) + ' CME';
+    elCap.textContent = total > room
+      ? 'Der Berg fasst noch ' + fmt(room) + ' CME. Mehr passt nicht hinein.'
+      : '';
+    btnApply.disabled = pendingGain <= 0;
+  }
+
+  function openDialog() {
+    if (busy) return;
+    if (state.level >= MAX) { flash('Der Berg ist voll. Mit Leeren entsteht wieder Platz.'); return; }
+    recalc();
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+  }
+  function closeDialog() {
+    if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+  }
+  btnFill.addEventListener('click', openDialog);
+  btnCancel.addEventListener('click', closeDialog);
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) closeDialog(); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    recalc();
+    if (pendingGain <= 0) return;
+    var t = new Date();
+    var dateStr = ('0' + t.getDate()).slice(-2) + '.' + ('0' + (t.getMonth() + 1)).slice(-2) + '.' + t.getFullYear();
+    var before = state.level, gained = pendingGain;
+    var kind = (state.fills % 2 === 0) ? 'A' : 'B';
+    state.fills = state.fills + 1;
+    state.level = Math.min(MAX, state.level + gained);
+    state.lastFill = { date: dateStr, gained: gained };
+    RULES.forEach(function (r) { $('in-' + r.id).value = ''; });
+    closeDialog();
+    scheduleSave();
+    flush();
+    if (reduceMotion) {
+      render();
+      flash('+' + fmt(gained) + ' CME im Berg');
+      return;
+    }
+    busy = true;
+    displayLevel = before;
+    render();
+    runCat(kind, kind === 'A' ? planThrow() : planPoop(), function () {
+      displayLevel = null;
+      render();
+      flash('+' + fmt(gained) + ' CME im Berg');
+    }, function () {
+      busy = false;
+    });
+  });
+
+  loadMirror();
+  render();
+  setInterval(function () { if (!document.hidden) render(); }, 60000);
+  initCloud();
+
+  if (isIntroDay(new Date())) {
+    busy = true;
+    playIntro().then(function () { busy = false; }, function () { busy = false; $('intro').hidden = true; document.querySelector('.app').inert = false; });
+  }
+})();
+</script>
+</body>
+</html>
