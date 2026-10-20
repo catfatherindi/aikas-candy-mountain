@@ -18,7 +18,7 @@ Oben rechts sucht der runde Knopf nach einer neuen Version. Ist eine verfügbar,
 
 - Der Berg fasst maximal **1.000 CME** (Candy-Mountain-Einheiten).
 - **Füllen** (unten links): das ganze Jahr möglich. Ein Fenster öffnet sich, in dem Mengen eingetragen werden. Die App rechnet in CME um.
-- **Leeren** (unten rechts): Ein Ablauf aus mehreren Fenstern führt zur Auswahl von Candy oder Cake. Danach wird der Berg geleert.
+- **Leeren** (unten rechts): Ein Ablauf aus mehreren Fenstern führt zur Auswahl von Candy oder Cake. Danach wird der Berg geleert. Pancakes (bei Cake) kosten am 20.10. nur 1 CME pro Stück.
 - Bei jedem Öffnen startet die App mit einer Anfangs-Szene.
 
 ## Belohnungen
