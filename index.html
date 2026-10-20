@@ -415,7 +415,7 @@ dialog::backdrop { background: rgba(40, 10, 30, 0.6); }
   var LS_KEY = 'aika-candy-mountain-v1';
 
   var RULES = [
-    { id: 'muell',  label: 'Müllsammeln',       unit: 'g',      hint: '1 g = 1 CME',     per: 1 },
+    { id: 'muell',  label: 'Müllsammeln',       unit: 'g',      hint: '20 g = 1 CME',    per: 20 },
     { id: 'laufen', label: 'Laufen',            unit: 'm',      hint: '100 m = 1 CME',   per: 100 },
     { id: 'rad',    label: 'Radfahren',         unit: 'm',      hint: '500 m = 1 CME',   per: 500 },
     { id: 'k4',     label: 'Klettern Grad 4',   unit: 'Routen', hint: '1 CME je Route',  mult: 1 },
@@ -1152,7 +1152,7 @@ dialog::backdrop { background: rgba(40, 10, 30, 0.6); }
   }
 
   /* Update-Prüfung */
-  var APP_VERSION = '1.3.0';
+  var APP_VERSION = '1.3.1';
   var PAGES_ORIGIN = 'https://catfatherindi.github.io';
   var PAGES_URL = PAGES_ORIGIN + '/aikas-candy-mountain/';
   var btnUpdate = $('btnUpdate'), upd = $('upd'), updText = $('updText');

@@ -40,7 +40,7 @@ Die Freischaltungen bleiben erhalten, auch nach dem Leeren.
 
 | Aktivität | CME |
 | --- | --- |
-| Müllsammeln | 1 g = 1 CME |
+| Müllsammeln | 20 g = 1 CME |
 | Laufen | 100 m = 1 CME |
 | Radfahren | 500 m = 1 CME |
 | Klettern Grad 4 | 1 CME je Route |
